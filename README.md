@@ -407,7 +407,7 @@ Assets/_Project/
 
 ## Demo
 
-The demonstration video should show:
+The demonstration video shows:
 
 1.  Moving around the scene.
 2.  Looking at an item and showing the interaction prompt.
