@@ -76,4 +76,12 @@ public class WorldItem : MonoBehaviour, IInteractable
 
         return true;
     }
+
+    // Used when creating a dropped world item.
+    public void SetItem(ItemData item, int amount)
+    {
+        itemData = item;
+        quantity = amount;
+        isBeingCollected = false;
+    }
 }

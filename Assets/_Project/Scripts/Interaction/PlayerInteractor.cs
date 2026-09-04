@@ -14,10 +14,11 @@ public class PlayerInteractor : MonoBehaviour
     public IInteractable CurrentInteractable =>
         currentInteractable;
 
-    public event Action<IInteractable> InteractableChanged;
+    public event Action<IInteractable>
+        InteractableChanged;
 
-    // Fired only when an interaction succeeds.
-    public event Action<IInteractable> InteractionSucceeded;
+    public event Action<IInteractable>
+        InteractionSucceeded;
 
     private void Update()
     {
@@ -29,36 +30,50 @@ public class PlayerInteractor : MonoBehaviour
     {
         IInteractable detectedInteractable = null;
 
-        if (playerCamera != null)
+        if (playerCamera == null)
         {
-            Ray ray = new Ray(
-                playerCamera.transform.position,
-                playerCamera.transform.forward
-            );
+            SetCurrentInteractable(null);
+            return;
+        }
 
-            if (Physics.Raycast(
-                    ray,
-                    out RaycastHit hit,
-                    interactionRange,
-                    interactionLayers))
+        Ray ray = new Ray(
+            playerCamera.transform.position,
+            playerCamera.transform.forward
+        );
+
+        if (Physics.Raycast(
+                ray,
+                out RaycastHit hit,
+                interactionRange,
+                interactionLayers))
+        {
+            detectedInteractable =
+                hit.collider
+                    .GetComponentInParent<IInteractable>();
+
+            if (detectedInteractable != null &&
+                !detectedInteractable.CanInteract())
             {
-                detectedInteractable =
-                    hit.collider.GetComponentInParent<IInteractable>();
-
-                if (detectedInteractable != null &&
-                    !detectedInteractable.CanInteract())
-                {
-                    detectedInteractable = null;
-                }
+                detectedInteractable = null;
             }
         }
 
-        if (detectedInteractable == currentInteractable)
+        SetCurrentInteractable(
+            detectedInteractable
+        );
+    }
+
+    private void SetCurrentInteractable(
+        IInteractable interactable)
+    {
+        if (currentInteractable ==
+            interactable)
         {
             return;
         }
 
-        currentInteractable = detectedInteractable;
+        currentInteractable =
+            interactable;
 
         InteractableChanged?.Invoke(
             currentInteractable
@@ -72,8 +87,13 @@ public class PlayerInteractor : MonoBehaviour
             return;
         }
 
-        if (Keyboard.current == null ||
-            !Keyboard.current.eKey.wasPressedThisFrame)
+        if (Keyboard.current == null)
+        {
+            return;
+        }
+
+        if (!Keyboard.current.eKey
+                .wasPressedThisFrame)
         {
             return;
         }
@@ -89,12 +109,16 @@ public class PlayerInteractor : MonoBehaviour
             return;
         }
 
-        // Interaction was successful.
-        currentInteractable = null;
+        // Tell UI / other systems that
+        // the interaction succeeded.
+        InteractionSucceeded?.Invoke(
+            interactable
+        );
 
-        InteractableChanged?.Invoke(null);
-
-        InteractionSucceeded?.Invoke(interactable);
+        // Clear the old reference.
+        // The next Update will perform a
+        // completely fresh raycast.
+        SetCurrentInteractable(null);
     }
 
     private void OnDrawGizmosSelected()
@@ -104,7 +128,8 @@ public class PlayerInteractor : MonoBehaviour
             return;
         }
 
-        Gizmos.color = Color.yellow;
+        Gizmos.color =
+            Color.yellow;
 
         Gizmos.DrawRay(
             playerCamera.transform.position,

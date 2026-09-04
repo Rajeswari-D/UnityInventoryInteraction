@@ -12,7 +12,9 @@ public class InventorySlotUI : MonoBehaviour
     private int slotIndex;
     private InventoryUI inventoryUI;
 
-    public void Initialize(int index, InventoryUI owner)
+    public void Initialize(
+        int index,
+        InventoryUI owner)
     {
         slotIndex = index;
         inventoryUI = owner;
@@ -34,7 +36,8 @@ public class InventorySlotUI : MonoBehaviour
             return;
         }
 
-        Inventory inventory = inventoryUI.Inventory;
+        Inventory inventory =
+            inventoryUI.Inventory;
 
         ItemData item =
             inventory.GetItem(slotIndex);
@@ -48,7 +51,10 @@ public class InventorySlotUI : MonoBehaviour
             return;
         }
 
-        SetItem(item, quantity);
+        SetItem(
+            item,
+            quantity
+        );
     }
 
     private void SetEmpty()
@@ -64,11 +70,14 @@ public class InventorySlotUI : MonoBehaviour
         }
     }
 
-    private void SetItem(ItemData item, int quantity)
+    private void SetItem(
+        ItemData item,
+        int quantity)
     {
         if (itemNameText != null)
         {
-            itemNameText.text = item.DisplayName;
+            itemNameText.text =
+                item.DisplayName;
         }
 
         if (quantityText != null)
@@ -84,7 +93,9 @@ public class InventorySlotUI : MonoBehaviour
     {
         if (inventoryUI != null)
         {
-            inventoryUI.SelectSlot(slotIndex);
+            inventoryUI.SelectSlot(
+                slotIndex
+            );
         }
     }
 }

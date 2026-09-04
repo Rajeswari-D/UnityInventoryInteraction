@@ -32,40 +32,18 @@ public class InventoryUI : MonoBehaviour
     private void OnEnable()
     {
         InventoryEvents.OnInventoryChanged += Refresh;
-
-        PlayerInteractor interactor =
-            FindAnyObjectByType<PlayerInteractor>();
-
-        if (interactor != null)
-        {
-            interactor.InteractionSucceeded +=
-                HandleInteractionSucceeded;
-        }
     }
 
     private void OnDisable()
     {
         InventoryEvents.OnInventoryChanged -= Refresh;
-
-        PlayerInteractor interactor =
-            FindAnyObjectByType<PlayerInteractor>();
-
-        if (interactor != null)
-        {
-            interactor.InteractionSucceeded -=
-                HandleInteractionSucceeded;
-        }
     }
 
     private void Start()
     {
-        // Inventory initializes its data in Awake().
         CreateSlots();
 
-        if (inventoryPanel != null)
-        {
-            inventoryPanel.SetActive(false);
-        }
+        CloseInventory();
 
         Refresh();
     }
@@ -77,31 +55,30 @@ public class InventoryUI : MonoBehaviour
             return;
         }
 
-        // TAB = Open / Close Inventory
+        // TAB - Open / Close Inventory
         if (Keyboard.current.tabKey.wasPressedThisFrame)
         {
             ToggleInventory();
+            return;
         }
 
-        // ESC = Close Inventory
-        if (IsOpen &&
-            Keyboard.current.escapeKey.wasPressedThisFrame)
-        {
-            CloseInventory();
-        }
-    }
-
-    // Called when an interaction successfully completes.
-    private void HandleInteractionSucceeded(
-        IInteractable interactable)
-    {
-        if (interactable == null)
+        if (!IsOpen)
         {
             return;
         }
 
-        // Open the inventory automatically after a successful pickup.
-        OpenInventory();
+        // ESC - Close Inventory
+        if (Keyboard.current.escapeKey.wasPressedThisFrame)
+        {
+            CloseInventory();
+            return;
+        }
+
+        // Q - Drop Selected Item
+        if (Keyboard.current.qKey.wasPressedThisFrame)
+        {
+            DropSelectedItem();
+        }
     }
 
     private void CreateSlots()
@@ -111,7 +88,6 @@ public class InventoryUI : MonoBehaviour
             Debug.LogError(
                 "InventoryUI: Inventory reference is missing."
             );
-
             return;
         }
 
@@ -120,7 +96,6 @@ public class InventoryUI : MonoBehaviour
             Debug.LogError(
                 "InventoryUI: Slot Container reference is missing."
             );
-
             return;
         }
 
@@ -129,11 +104,9 @@ public class InventoryUI : MonoBehaviour
             Debug.LogError(
                 "InventoryUI: Slot Prefab reference is missing."
             );
-
             return;
         }
 
-        // Remove any existing slots.
         foreach (Transform child in slotContainer)
         {
             Destroy(child.gameObject);
@@ -141,16 +114,21 @@ public class InventoryUI : MonoBehaviour
 
         slotUIs.Clear();
 
-        // Create one UI slot for every inventory slot.
         for (int i = 0; i < inventory.SlotCount; i++)
         {
             InventorySlotUI slotUI =
-                Instantiate(slotPrefab, slotContainer);
+                Instantiate(
+                    slotPrefab,
+                    slotContainer
+                );
 
             slotUI.name =
                 $"InventorySlot_{i}";
 
-            slotUI.Initialize(i, this);
+            slotUI.Initialize(
+                i,
+                this
+            );
 
             slotUIs.Add(slotUI);
         }
@@ -163,7 +141,6 @@ public class InventoryUI : MonoBehaviour
             return;
         }
 
-        // Safety check in case inventory size changes.
         if (slotUIs.Count != inventory.SlotCount)
         {
             CreateSlots();
@@ -178,7 +155,6 @@ public class InventoryUI : MonoBehaviour
         }
 
         ValidateSelection();
-
         RefreshSelectedItem();
     }
 
@@ -198,13 +174,10 @@ public class InventoryUI : MonoBehaviour
         ItemData item =
             inventory.GetItem(index);
 
-        // Don't select empty slots.
         if (item == null)
         {
             selectedSlotIndex = -1;
-
             RefreshSelectedItem();
-
             return;
         }
 
@@ -226,11 +199,7 @@ public class InventoryUI : MonoBehaviour
             return;
         }
 
-        ItemData selectedItem =
-            inventory.GetItem(selectedSlotIndex);
-
-        // Selected item was removed.
-        if (selectedItem == null)
+        if (inventory.GetItem(selectedSlotIndex) == null)
         {
             selectedSlotIndex = -1;
         }
@@ -269,23 +238,20 @@ public class InventoryUI : MonoBehaviour
         if (item.IsStackable)
         {
             selectedItemText.text =
-                $"Selected: {item.DisplayName} x{quantity}";
+                $"Selected: {item.DisplayName} x{quantity}\n" +
+                "Press Q to Drop";
         }
         else
         {
             selectedItemText.text =
-                $"Selected: {item.DisplayName}";
+                $"Selected: {item.DisplayName}\n" +
+                "Press Q to Drop";
         }
     }
 
     private void ToggleInventory()
     {
-        if (inventoryPanel == null)
-        {
-            return;
-        }
-
-        if (inventoryPanel.activeSelf)
+        if (IsOpen)
         {
             CloseInventory();
         }
@@ -315,5 +281,90 @@ public class InventoryUI : MonoBehaviour
         }
 
         inventoryPanel.SetActive(false);
+    }
+
+    private void DropSelectedItem()
+    {
+        if (inventory == null)
+        {
+            return;
+        }
+
+        if (selectedSlotIndex < 0)
+        {
+            Debug.Log(
+                "No inventory item selected."
+            );
+
+            return;
+        }
+
+        ItemData item =
+            inventory.GetItem(selectedSlotIndex);
+
+        if (item == null)
+        {
+            selectedSlotIndex = -1;
+            Refresh();
+            return;
+        }
+
+        int quantity =
+            inventory.GetQuantity(selectedSlotIndex);
+
+        if (WorldItemDropper.Instance == null)
+        {
+            Debug.LogError(
+                "InventoryUI: WorldItemDropper is missing."
+            );
+
+            return;
+        }
+
+        // Spawn world item first.
+        bool dropped =
+            WorldItemDropper.Instance.TryDropItem(
+                item,
+                quantity
+            );
+
+        if (!dropped)
+        {
+            Debug.LogWarning(
+                "InventoryUI: Failed to spawn dropped item."
+            );
+
+            return;
+        }
+
+        // Remove from inventory.
+        bool removed =
+            inventory.TryRemoveItem(
+                selectedSlotIndex,
+                quantity
+            );
+
+        if (!removed)
+        {
+            Debug.LogWarning(
+                "InventoryUI: Failed to remove item."
+            );
+
+            return;
+        }
+
+        Debug.Log(
+            $"Dropped {item.DisplayName} x{quantity}."
+        );
+
+        // Clear selection.
+        selectedSlotIndex = -1;
+
+        // Refresh inventory data.
+        Refresh();
+
+        // IMPORTANT:
+        // Close inventory after successful drop.
+        CloseInventory();
     }
 }
