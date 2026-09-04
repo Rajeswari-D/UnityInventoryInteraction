@@ -26,10 +26,15 @@ public class ItemData : ScriptableObject
     [Header("Visual")]
     [SerializeField] private Sprite icon;
 
+    [Header("World")]
+    [SerializeField] private WorldItem worldPrefab;
+
     public string ItemId => itemId;
     public string DisplayName => displayName;
     public ItemType ItemType => itemType;
     public bool IsStackable => isStackable;
     public int MaxStackSize => Mathf.Max(1, maxStackSize);
     public Sprite Icon => icon;
+
+    public WorldItem WorldPrefab => worldPrefab;
 }

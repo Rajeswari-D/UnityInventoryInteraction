@@ -6,11 +6,15 @@ public class WorldItemDropper : MonoBehaviour
 
     [Header("References")]
     [SerializeField] private Transform dropPoint;
-    [SerializeField] private WorldItem worldItemPrefab;
 
     [Header("Drop Settings")]
-    [SerializeField] private float forwardOffset = 1.5f;
-    [SerializeField] private float upwardOffset = 0.3f;
+    [SerializeField] private float forwardOffset = 0f;
+    [SerializeField] private float dropHeight = 1.5f;
+
+    [Header("Physics")]
+    [SerializeField] private float itemMass = 1f;
+    [SerializeField] private float drag = 0.5f;
+    [SerializeField] private float angularDrag = 0.5f;
 
     private void Awake()
     {
@@ -30,10 +34,10 @@ public class WorldItemDropper : MonoBehaviour
             return false;
         }
 
-        if (worldItemPrefab == null)
+        if (item.WorldPrefab == null)
         {
             Debug.LogError(
-                "WorldItemDropper: World Item Prefab is missing."
+                $"WorldItemDropper: No world prefab assigned for {item.DisplayName}."
             );
 
             return false;
@@ -51,11 +55,11 @@ public class WorldItemDropper : MonoBehaviour
         Vector3 spawnPosition =
             dropPoint.position +
             dropPoint.forward * forwardOffset +
-            Vector3.up * upwardOffset;
+            Vector3.up * dropHeight;
 
         WorldItem droppedItem =
             Instantiate(
-                worldItemPrefab,
+                item.WorldPrefab,
                 spawnPosition,
                 Quaternion.identity
             );
@@ -65,17 +69,30 @@ public class WorldItemDropper : MonoBehaviour
             return false;
         }
 
-        // Configure the newly spawned item.
         droppedItem.SetItem(
             item,
             quantity
         );
 
-        // Make sure the dropped item is active.
         droppedItem.gameObject.SetActive(true);
 
+        Rigidbody rigidbody =
+            droppedItem.GetComponent<Rigidbody>();
+
+        if (rigidbody == null)
+        {
+            rigidbody =
+                droppedItem.gameObject.AddComponent<Rigidbody>();
+        }
+
+        rigidbody.mass = itemMass;
+        rigidbody.linearDamping = drag;
+        rigidbody.angularDamping = angularDrag;
+        rigidbody.useGravity = true;
+        rigidbody.isKinematic = false;
+
         Debug.Log(
-            $"World item spawned: {item.DisplayName} x{quantity}"
+            $"World item dropped: {item.DisplayName} x{quantity}"
         );
 
         return true;

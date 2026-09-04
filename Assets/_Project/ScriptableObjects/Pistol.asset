@@ -18,3 +18,4 @@ MonoBehaviour:
   isStackable: 0
   maxStackSize: 1
   icon: {fileID: 0}
+  worldPrefab: {fileID: 3979724828464448149, guid: 883accce55c2c4b40865a79c3afe7177, type: 3}
