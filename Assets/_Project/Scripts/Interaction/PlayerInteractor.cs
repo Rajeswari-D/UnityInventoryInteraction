@@ -11,9 +11,13 @@ public class PlayerInteractor : MonoBehaviour
 
     private IInteractable currentInteractable;
 
-    public IInteractable CurrentInteractable => currentInteractable;
+    public IInteractable CurrentInteractable =>
+        currentInteractable;
 
     public event Action<IInteractable> InteractableChanged;
+
+    // Fired only when an interaction succeeds.
+    public event Action<IInteractable> InteractionSucceeded;
 
     private void Update()
     {
@@ -56,7 +60,9 @@ public class PlayerInteractor : MonoBehaviour
 
         currentInteractable = detectedInteractable;
 
-        InteractableChanged?.Invoke(currentInteractable);
+        InteractableChanged?.Invoke(
+            currentInteractable
+        );
     }
 
     private void HandleInteractionInput()
@@ -66,11 +72,29 @@ public class PlayerInteractor : MonoBehaviour
             return;
         }
 
-        if (Keyboard.current != null &&
-            Keyboard.current.eKey.wasPressedThisFrame)
+        if (Keyboard.current == null ||
+            !Keyboard.current.eKey.wasPressedThisFrame)
         {
-            currentInteractable.Interact();
+            return;
         }
+
+        IInteractable interactable =
+            currentInteractable;
+
+        bool succeeded =
+            interactable.Interact();
+
+        if (!succeeded)
+        {
+            return;
+        }
+
+        // Interaction was successful.
+        currentInteractable = null;
+
+        InteractableChanged?.Invoke(null);
+
+        InteractionSucceeded?.Invoke(interactable);
     }
 
     private void OnDrawGizmosSelected()
@@ -84,7 +108,8 @@ public class PlayerInteractor : MonoBehaviour
 
         Gizmos.DrawRay(
             playerCamera.transform.position,
-            playerCamera.transform.forward * interactionRange
+            playerCamera.transform.forward *
+            interactionRange
         );
     }
 }

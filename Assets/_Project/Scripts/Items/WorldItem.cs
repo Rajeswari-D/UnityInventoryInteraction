@@ -35,14 +35,15 @@ public class WorldItem : MonoBehaviour, IInteractable
                quantity > 0;
     }
 
-    public void Interact()
+    public bool Interact()
     {
         if (!CanInteract())
         {
-            return;
+            return false;
         }
 
-        Inventory inventory = FindAnyObjectByType<Inventory>();
+        Inventory inventory =
+            FindAnyObjectByType<Inventory>();
 
         if (inventory == null)
         {
@@ -50,7 +51,7 @@ public class WorldItem : MonoBehaviour, IInteractable
                 "WorldItem: No Inventory found in the scene."
             );
 
-            return;
+            return false;
         }
 
         bool added =
@@ -62,11 +63,17 @@ public class WorldItem : MonoBehaviour, IInteractable
                 $"Inventory is full. Cannot pick up {itemData.DisplayName}."
             );
 
-            return;
+            return false;
         }
 
         isBeingCollected = true;
 
+        Debug.Log(
+            $"Picked up {itemData.DisplayName} x{quantity}."
+        );
+
         Destroy(gameObject);
+
+        return true;
     }
 }

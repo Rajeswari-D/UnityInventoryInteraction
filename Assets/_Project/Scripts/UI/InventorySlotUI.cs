@@ -4,10 +4,10 @@ using UnityEngine.UI;
 
 public class InventorySlotUI : MonoBehaviour
 {
-    [Header("UI References")]
+    [Header("References")]
+    [SerializeField] private Button button;
     [SerializeField] private TMP_Text itemNameText;
     [SerializeField] private TMP_Text quantityText;
-    [SerializeField] private Button button;
 
     private int slotIndex;
     private InventoryUI inventoryUI;
@@ -28,33 +28,56 @@ public class InventorySlotUI : MonoBehaviour
 
     public void Refresh()
     {
-        if (inventoryUI == null)
+        if (inventoryUI == null ||
+            inventoryUI.Inventory == null)
         {
             return;
         }
 
         Inventory inventory = inventoryUI.Inventory;
 
-        if (inventory == null)
-        {
-            return;
-        }
+        ItemData item =
+            inventory.GetItem(slotIndex);
 
-        ItemData item = inventory.GetItem(slotIndex);
-        int quantity = inventory.GetQuantity(slotIndex);
+        int quantity =
+            inventory.GetQuantity(slotIndex);
 
         if (item == null)
         {
-            itemNameText.text = "Empty";
-            quantityText.text = string.Empty;
+            SetEmpty();
             return;
         }
 
-        itemNameText.text = item.DisplayName;
+        SetItem(item, quantity);
+    }
 
-        quantityText.text = item.IsStackable
-            ? $"x{quantity}"
-            : "x1";
+    private void SetEmpty()
+    {
+        if (itemNameText != null)
+        {
+            itemNameText.text = "EMPTY";
+        }
+
+        if (quantityText != null)
+        {
+            quantityText.text = "";
+        }
+    }
+
+    private void SetItem(ItemData item, int quantity)
+    {
+        if (itemNameText != null)
+        {
+            itemNameText.text = item.DisplayName;
+        }
+
+        if (quantityText != null)
+        {
+            quantityText.text =
+                item.IsStackable
+                    ? $"x{quantity}"
+                    : "";
+        }
     }
 
     private void OnClicked()

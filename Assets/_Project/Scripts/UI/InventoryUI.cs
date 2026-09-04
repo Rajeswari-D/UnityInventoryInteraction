@@ -20,24 +20,53 @@ public class InventoryUI : MonoBehaviour
 
     public Inventory Inventory => inventory;
 
-    private void Awake()
+    public bool IsOpen
     {
-        CreateSlots();
+        get
+        {
+            return inventoryPanel != null &&
+                   inventoryPanel.activeSelf;
+        }
     }
 
     private void OnEnable()
     {
         InventoryEvents.OnInventoryChanged += Refresh;
+
+        PlayerInteractor interactor =
+            FindAnyObjectByType<PlayerInteractor>();
+
+        if (interactor != null)
+        {
+            interactor.InteractionSucceeded +=
+                HandleInteractionSucceeded;
+        }
     }
 
     private void OnDisable()
     {
         InventoryEvents.OnInventoryChanged -= Refresh;
+
+        PlayerInteractor interactor =
+            FindAnyObjectByType<PlayerInteractor>();
+
+        if (interactor != null)
+        {
+            interactor.InteractionSucceeded -=
+                HandleInteractionSucceeded;
+        }
     }
 
     private void Start()
     {
-        inventoryPanel.SetActive(false);
+        // Inventory initializes its data in Awake().
+        CreateSlots();
+
+        if (inventoryPanel != null)
+        {
+            inventoryPanel.SetActive(false);
+        }
+
         Refresh();
     }
 
@@ -48,21 +77,63 @@ public class InventoryUI : MonoBehaviour
             return;
         }
 
+        // TAB = Open / Close Inventory
         if (Keyboard.current.tabKey.wasPressedThisFrame)
         {
             ToggleInventory();
         }
+
+        // ESC = Close Inventory
+        if (IsOpen &&
+            Keyboard.current.escapeKey.wasPressedThisFrame)
+        {
+            CloseInventory();
+        }
     }
 
-    private void CreateSlots()
+    // Called when an interaction successfully completes.
+    private void HandleInteractionSucceeded(
+        IInteractable interactable)
     {
-        if (inventory == null ||
-            slotContainer == null ||
-            slotPrefab == null)
+        if (interactable == null)
         {
             return;
         }
 
+        // Open the inventory automatically after a successful pickup.
+        OpenInventory();
+    }
+
+    private void CreateSlots()
+    {
+        if (inventory == null)
+        {
+            Debug.LogError(
+                "InventoryUI: Inventory reference is missing."
+            );
+
+            return;
+        }
+
+        if (slotContainer == null)
+        {
+            Debug.LogError(
+                "InventoryUI: Slot Container reference is missing."
+            );
+
+            return;
+        }
+
+        if (slotPrefab == null)
+        {
+            Debug.LogError(
+                "InventoryUI: Slot Prefab reference is missing."
+            );
+
+            return;
+        }
+
+        // Remove any existing slots.
         foreach (Transform child in slotContainer)
         {
             Destroy(child.gameObject);
@@ -70,10 +141,14 @@ public class InventoryUI : MonoBehaviour
 
         slotUIs.Clear();
 
+        // Create one UI slot for every inventory slot.
         for (int i = 0; i < inventory.SlotCount; i++)
         {
             InventorySlotUI slotUI =
                 Instantiate(slotPrefab, slotContainer);
+
+            slotUI.name =
+                $"InventorySlot_{i}";
 
             slotUI.Initialize(i, this);
 
@@ -83,26 +158,82 @@ public class InventoryUI : MonoBehaviour
 
     public void Refresh()
     {
+        if (inventory == null)
+        {
+            return;
+        }
+
+        // Safety check in case inventory size changes.
+        if (slotUIs.Count != inventory.SlotCount)
+        {
+            CreateSlots();
+        }
+
         foreach (InventorySlotUI slotUI in slotUIs)
         {
-            slotUI.Refresh();
+            if (slotUI != null)
+            {
+                slotUI.Refresh();
+            }
         }
+
+        ValidateSelection();
 
         RefreshSelectedItem();
     }
 
     public void SelectSlot(int index)
     {
-        if (inventory == null ||
-            index < 0 ||
+        if (inventory == null)
+        {
+            return;
+        }
+
+        if (index < 0 ||
             index >= inventory.SlotCount)
         {
+            return;
+        }
+
+        ItemData item =
+            inventory.GetItem(index);
+
+        // Don't select empty slots.
+        if (item == null)
+        {
+            selectedSlotIndex = -1;
+
+            RefreshSelectedItem();
+
             return;
         }
 
         selectedSlotIndex = index;
 
         RefreshSelectedItem();
+    }
+
+    private void ValidateSelection()
+    {
+        if (selectedSlotIndex < 0)
+        {
+            return;
+        }
+
+        if (selectedSlotIndex >= inventory.SlotCount)
+        {
+            selectedSlotIndex = -1;
+            return;
+        }
+
+        ItemData selectedItem =
+            inventory.GetItem(selectedSlotIndex);
+
+        // Selected item was removed.
+        if (selectedItem == null)
+        {
+            selectedSlotIndex = -1;
+        }
     }
 
     private void RefreshSelectedItem()
@@ -115,7 +246,9 @@ public class InventoryUI : MonoBehaviour
 
         if (selectedSlotIndex < 0)
         {
-            selectedItemText.text = "Selected: None";
+            selectedItemText.text =
+                "Selected: None";
+
             return;
         }
 
@@ -124,26 +257,63 @@ public class InventoryUI : MonoBehaviour
 
         if (item == null)
         {
-            selectedItemText.text = "Selected: Empty";
+            selectedItemText.text =
+                "Selected: None";
+
             return;
         }
 
         int quantity =
             inventory.GetQuantity(selectedSlotIndex);
 
-        selectedItemText.text =
-            $"Selected: {item.DisplayName} x{quantity}";
+        if (item.IsStackable)
+        {
+            selectedItemText.text =
+                $"Selected: {item.DisplayName} x{quantity}";
+        }
+        else
+        {
+            selectedItemText.text =
+                $"Selected: {item.DisplayName}";
+        }
     }
 
     private void ToggleInventory()
     {
-        bool isOpen = !inventoryPanel.activeSelf;
-
-        inventoryPanel.SetActive(isOpen);
-
-        if (isOpen)
+        if (inventoryPanel == null)
         {
-            Refresh();
+            return;
         }
+
+        if (inventoryPanel.activeSelf)
+        {
+            CloseInventory();
+        }
+        else
+        {
+            OpenInventory();
+        }
+    }
+
+    private void OpenInventory()
+    {
+        if (inventoryPanel == null)
+        {
+            return;
+        }
+
+        inventoryPanel.SetActive(true);
+
+        Refresh();
+    }
+
+    private void CloseInventory()
+    {
+        if (inventoryPanel == null)
+        {
+            return;
+        }
+
+        inventoryPanel.SetActive(false);
     }
 }
